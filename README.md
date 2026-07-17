@@ -123,7 +123,7 @@ This creates three accounts, one for each role, useful for testing RBAC:
 
 ### 5. Access the app
 
-- Frontend: [http://localhost:3000](http://localhost:3000)
+- Frontend: [http://localhost:3000/login](http://localhost:3000/login)
 - Backend API: [http://localhost:5000/api](http://localhost:5000/api)
 
 Log in with any of the accounts above.
