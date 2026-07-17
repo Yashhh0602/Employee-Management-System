@@ -1,0 +1,3 @@
+employeeId,name,email,password,phone,department,designation,salary,joiningDate,status,role
+EMP006,Jane Import,janeimport@ems.com,Test@123,4445556666,Marketing,Marketing Specialist,42000,2024-06-01,active,employee
+EMP007,Sam Import,samimport@ems.com,Test@123,3334445555,Sales,Sales Rep,38000,2024-06-15,active,employee

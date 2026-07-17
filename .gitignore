@@ -1,0 +1,12 @@
+.env
+.env.*
+backend/.env
+backend/.env.test
+backup.dump
+backup.sql
+node_modules/
+**/node_modules/
+frontend/.next/
+frontend/out/
+*.log
+.DS_Store
