@@ -255,7 +255,7 @@ All endpoints (except login) require a valid JWT in the `Authorization: Bearer <
 
 ## Deployment
 
-- **Frontend:** [https://employee-management-system-silk-omega.vercel.app/login]([https://employee-management-system-silk-omega.vercel.app/login])
+- **Frontend:** [https://employee-management-system-silk-omega.vercel.app/login](https://employee-management-system-silk-omega.vercel.app/login)
 - **Backend API:** [https://employee-management-system-w2cm.onrender.com/api](https://employee-management-system-w2cm.onrender.com/api)
 
 > Hosted on Vercel (frontend) and Render (backend + PostgreSQL). Note: the free Render tier spins down after inactivity, so the first request after idle time may take 30–60 seconds to respond while it wakes up.
