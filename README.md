@@ -2,6 +2,12 @@
 
 A full-stack employee management system with role-based access control (RBAC), organizational hierarchy management, and secure authentication — built with Next.js, Express, and PostgreSQL, fully containerized with Docker.
 
+## Live Demo Walkthrough
+
+
+
+https://github.com/user-attachments/assets/4b9ed322-477b-469a-b34c-abb20eb6d2a6
+
 ## Features
 
 - **JWT-based authentication** with bcrypt password hashing
@@ -260,11 +266,7 @@ All endpoints (except login) require a valid JWT in the `Authorization: Bearer <
 
 > Hosted on Vercel (frontend) and Render (backend + PostgreSQL). Note: the free Render tier spins down after inactivity, so the first request after idle time may take 30–60 seconds to respond while it wakes up.
 
-## Screenshots
 
-
-
-https://github.com/user-attachments/assets/4b9ed322-477b-469a-b34c-abb20eb6d2a6
 
 
 
