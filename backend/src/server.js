@@ -11,7 +11,10 @@ const organizationRoutes = require('./routes/organizationRoutes');
 
 const app = express();
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: 'https://employee-management-system-silk-omega.vercel.app',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
