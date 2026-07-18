@@ -123,7 +123,7 @@ This creates three accounts, one for each role, useful for testing RBAC:
 
 ### 5. Access the app
 
-- Frontend: [http://localhost:3000](http://localhost:3000)
+- Frontend: [http://localhost:3000/login](http://localhost:3000/login)
 - Backend API: [http://localhost:5000/api](http://localhost:5000/api)
 
 Log in with any of the accounts above.
@@ -251,16 +251,22 @@ All endpoints (except login) require a valid JWT in the `Authorization: Bearer <
 - [x] Dark mode
 - [x] Docker containerization (this repo)
 - [x] Unit tests (auth, RBAC, organizational hierarchy — see `backend/src/tests/`)
-- [ ] Live deployment (see Deployment section below once live)
+- [x] Live deployment (see Deployment section below)
 
 ## Deployment
 
-- **Frontend:** _add live Vercel URL here once deployed_
-- **Backend API:** _add live Render URL here once deployed_
+- **Frontend:** [https://employee-management-system-silk-omega.vercel.app/login](https://employee-management-system-silk-omega.vercel.app/login)
+- **Backend API:** [https://employee-management-system-w2cm.onrender.com/api](https://employee-management-system-w2cm.onrender.com/api)
+
+> Hosted on Vercel (frontend) and Render (backend + PostgreSQL). Note: the free Render tier spins down after inactivity, so the first request after idle time may take 30–60 seconds to respond while it wakes up.
 
 ## Screenshots
 
-_Add screenshots or a short demo GIF/video link here — login screen, dashboard, employee list, organization tree._
+
+
+https://github.com/user-attachments/assets/4b9ed322-477b-469a-b34c-abb20eb6d2a6
+
+
 
 ## License
 
