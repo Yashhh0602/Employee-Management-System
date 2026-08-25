@@ -6,10 +6,15 @@ const sequelize = require('../config/db.testconfig');
 // Override the models to use the test DB connection
 jest.mock('../config/db', () => require('../config/db.testconfig'));
 
+const redisConnection = require('../queues/redisConnection');
+const salaryNotificationQueue = require('../queues/salaryNotification.queue');
+
 beforeAll(async () => {
   await sequelize.sync({ force: true });
 });
 
 afterAll(async () => {
   await sequelize.close();
+  await salaryNotificationQueue.close();
+  await redisConnection.quit();
 });
