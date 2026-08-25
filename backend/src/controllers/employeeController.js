@@ -1,5 +1,6 @@
 const { Employee, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const salaryNotificationQueue = require('../queues/salaryNotification.queue');
 
 exports.getAll = async (req, res) => {
   const { search, department, role, status, sortBy = 'joiningDate', order = 'DESC', page = 1, limit = 10 } = req.query;
@@ -48,11 +49,22 @@ exports.update = async (req, res) => {
     const emp = await Employee.findByPk(req.params.id);
     if (!emp || emp.isDeleted) return res.status(404).json({ message: 'Not found' });
 
-    // HR cannot promote to super_admin
     if (req.user.role === 'hr_manager' && req.body.role === 'super_admin') {
       return res.status(403).json({ message: 'HR cannot assign Super Admin role' });
     }
+
+    const oldSalary = emp.salary;
     await emp.update(req.body);
+
+    if (req.body.salary !== undefined && req.body.salary !== oldSalary) {
+      await salaryNotificationQueue.add('salary-changed', {
+        employeeId: emp.id,
+        oldSalary,
+        newSalary: req.body.salary,
+        changedBy: req.user.id,
+      });
+    }
+
     const { password, ...safe } = emp.toJSON();
     res.json(safe);
   } catch (err) {

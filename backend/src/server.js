@@ -24,6 +24,7 @@ app.use('/api/organization', organizationRoutes);
 
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
+  require('./queues/salaryNotification.worker'); // start worker
   sequelize.sync({ alter: true }).then(() => {
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   }).catch((err) => console.error('Failed to start server:', err));
