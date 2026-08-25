@@ -24,6 +24,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     defaults:
       run:
@@ -53,8 +62,8 @@ jobs:
           DB_PASSWORD: postgres
           JWT_SECRET: ci_test_secret_not_for_production
           JWT_EXPIRES_IN: 1h
+          REDIS_URL: redis://localhost:6379
         run: npm test
-
   deploy:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
