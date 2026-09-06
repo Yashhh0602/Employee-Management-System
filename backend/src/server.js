@@ -17,6 +17,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(morgan('dev'));
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -24,7 +25,7 @@ app.use('/api/organization', organizationRoutes);
 
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  require('./queues/salaryNotification.worker'); // start worker
+// start worker
   sequelize.sync({ alter: true }).then(() => {
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   }).catch((err) => console.error('Failed to start server:', err));

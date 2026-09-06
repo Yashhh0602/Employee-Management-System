@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: ems
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: worker }
+  template:
+    metadata:
+      labels: { app: worker }
+    spec:
+      containers:
+        - name: worker
+          image: ems-api:v2
+          imagePullPolicy: IfNotPresent
+          command: ["node", "src/worker.js"]
+          envFrom:
+            - configMapRef: { name: ems-config }
+            - secretRef: { name: ems-secret }
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "250m", memory: "128Mi" }
