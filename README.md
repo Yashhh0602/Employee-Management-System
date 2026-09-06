@@ -264,6 +264,51 @@ All endpoints (except login) require a valid JWT in the `Authorization: Bearer <
 - **Frontend:** [https://employee-management-system-silk-omega.vercel.app/login](https://employee-management-system-silk-omega.vercel.app/login)
 - **Backend API:** [https://employee-management-system-w2cm.onrender.com/api](https://employee-management-system-w2cm.onrender.com/api)
 
+## Kubernetes Deployment
+
+As a learning exercise beyond the Render/Vercel production deployment, the backend was also deployed to Kubernetes (tested locally via Docker Desktop's built-in cluster) to get hands-on experience with container orchestration at a level Docker Compose doesn't cover.
+
+### Architecture
+
+The manifests in `k8s/` split the app into four independently scaled services:
+
+| Component | Kind | Why |
+|---|---|---|
+| `api` | Deployment (2 replicas) | Stateless, load-balanced via a ClusterIP Service |
+| `worker` | Deployment (1 replica) | Runs the BullMQ salary-notification consumer as a separate process from the API, so a worker crash can't take down request handling and vice versa |
+| `postgres` | StatefulSet + PersistentVolumeClaim | Stable network identity and persistent storage across pod restarts |
+| `redis` | Deployment | Backing store for the BullMQ job queue |
+
+Configuration is split between a ConfigMap (non-secret values like `DB_HOST`, `REDIS_URL`) and a Secret (`DB_PASSWORD`, `JWT_SECRET`), injected into pods as environment variables. The API Deployment has readiness and liveness probes against a `/health` endpoint, which gates rolling updates so traffic only reaches pods that are actually ready.
+
+### Running it locally
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/
+kubectl get pods -n ems -w
+```
+
+Once all pods are `Running`, port-forward the API Service:
+
+```bash
+kubectl port-forward -n ems svc/api 5000:80
+```
+
+`k8s/secret.yaml` ships with placeholder values, replace `DB_PASSWORD` and `JWT_SECRET` before applying, or create the Secret imperatively instead:
+
+```bash
+kubectl create secret generic ems-secret -n ems \
+  --from-literal=DB_PASSWORD=your_password \
+  --from-literal=JWT_SECRET=your_jwt_secret
+```
+
+### What I'd change for a real production K8s deployment
+
+- Run Postgres as a managed external database (RDS, Neon, Cloud SQL) instead of in-cluster, in-cluster stateful data is fine for learning but adds operational risk in real production
+- Use a secrets manager (AWS Secrets Manager, Sealed Secrets, or External Secrets Operator) instead of plain K8s Secrets, which are only base64-encoded, not encrypted at rest by default
+- Add a HorizontalPodAutoscaler on the `api` Deployment
+- Terminate TLS at the Ingress and put it behind a real domain instead of local port-forwarding
 > Hosted on Vercel (frontend) and Render (backend + PostgreSQL). Note: the free Render tier spins down after inactivity, so the first request after idle time may take 30–60 seconds to respond while it wakes up.
 
 
