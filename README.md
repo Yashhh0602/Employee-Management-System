@@ -1,39 +1,52 @@
 # Employee Management System (EMS)
 
-A full-stack employee management system with role-based access control (RBAC), organizational hierarchy management, and secure authentication — built with Next.js, Express, and PostgreSQL, fully containerized with Docker.
+A full stack employee management system with field level role based access control, a self referencing org hierarchy with cycle detection, and a background job queue. Built with Next.js, Express and PostgreSQL, containerized with Docker, tested in CI against real Postgres and Redis, and deployed to a local Kubernetes cluster.
 
 ## Live Demo Walkthrough
 
+<!-- KEEP YOUR EXISTING VIDEO LINE HERE (the Video.Project.1.mp4 embed). Do not change it. -->
 
+> The hosted deployment is offline. The walkthrough above shows every feature running end to end.
 
-https://github.com/user-attachments/assets/4b9ed322-477b-469a-b34c-abb20eb6d2a6
+## Highlights
+
+* **Field level RBAC, not just route level.** Sensitive fields like salary are protected at the model layer, so an employee editing their own profile cannot change their salary even with a hand crafted request.
+* **Self referencing org hierarchy with cycle detection.** Reassigning a manager is checked so nobody can end up reporting to themselves through a chain.
+* **Background jobs with BullMQ.** Salary notifications run in a separate worker process on a Redis queue, so a worker crash can't take down request handling.
+* **Tested where it matters.** Jest and Supertest suites cover auth, RBAC edge cases and hierarchy logic. GitHub Actions runs them on every push against real Postgres and Redis service containers.
+* **Kubernetes.** Deployed to a local cluster (Docker Desktop) with separate api, worker, postgres and redis workloads. See [Kubernetes Deployment](#kubernetes-deployment).
 
 ## Features
 
-- **JWT-based authentication** with bcrypt password hashing
-- **Role-based access control (RBAC)** — field-level enforcement, not just route-level (e.g. sensitive fields like salary are protected at the model layer)
-- **Self-referencing organizational hierarchy** with cycle detection (prevents invalid reporting structures)
-- **Employee management** — full CRUD with search, filter, sort, and pagination handled server-side
-- **CSV bulk import** with per-row error handling
-- **Dashboard** with live aggregated stats
-- **Dark mode** (class-based theming)
-- **Automated tests** covering auth, RBAC edge cases, and organizational hierarchy logic
+* JWT authentication with bcrypt password hashing
+* Role based access control (Super Admin, HR Manager, Employee), enforced at route and field level
+* Employee CRUD with server side search, filter, sort and pagination
+* Self referencing organizational hierarchy with circular reporting prevention
+* CSV bulk import with per row error handling
+* Dashboard with live aggregated stats
+* Salary change notifications processed by a BullMQ worker
+* Dark mode (class based theming)
+* Automated tests for auth, RBAC and hierarchy logic
 
 ## Tech Stack
 
-| Layer      | Technology                          |
-|------------|--------------------------------------|
-| Frontend   | Next.js (App Router), TypeScript, Tailwind CSS |
-| Backend    | Node.js, Express                    |
-| Database   | PostgreSQL, Sequelize ORM           |
-| Auth       | JWT, bcrypt                         |
-| Testing    | Jest                                |
-| Containerization | Docker, Docker Compose        |
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js (App Router), TypeScript, Tailwind CSS |
+| Backend | Node.js, Express |
+| Database | PostgreSQL, Sequelize ORM |
+| Queue | Redis, BullMQ |
+| Auth | JWT, bcrypt |
+| Testing | Jest, Supertest |
+| CI | GitHub Actions (Postgres and Redis service containers) |
+| Containers | Docker, Docker Compose |
+| Orchestration | Kubernetes (local, Docker Desktop) |
 
 ## Project Structure
 
 ```
 ems/
+├── .github/workflows/       # CI: tests against Postgres + Redis service containers
 ├── backend/
 │   ├── src/
 │   │   ├── config/          # Database configuration
@@ -50,20 +63,21 @@ ems/
 ├── frontend/
 │   ├── app/                 # Next.js App Router pages
 │   ├── components/          # Reusable React components
-│   ├── context/             # Auth & Theme context providers
+│   ├── context/             # Auth and Theme context providers
 │   ├── lib/                 # API client
 │   ├── Dockerfile
 │   └── package.json
+├── k8s/                     # Kubernetes manifests
 ├── docker-compose.yml
 └── README.md
 ```
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
-- Git
+* Docker Desktop (includes Docker Compose)
+* Git
 
-No local installation of Node.js, npm, or PostgreSQL is required — everything runs inside containers.
+No local Node.js, npm or PostgreSQL install is needed. Everything runs in containers.
 
 ## Getting Started
 
@@ -76,7 +90,7 @@ cd Employee-Management-System
 
 ### 2. Environment variables
 
-Create a `.env` file inside the `backend/` folder (this is gitignored and not included in the repo for security):
+Create a `.env` file inside `backend/` (it is gitignored):
 
 ```env
 NODE_ENV=development
@@ -90,82 +104,64 @@ JWT_SECRET=replace_this_with_a_long_random_string
 JWT_EXPIRES_IN=1h
 ```
 
-> **Note:** `DB_HOST` must be `postgres` (the Docker service name), not `localhost`, since the backend connects to the database over the internal Docker network.
+`DB_HOST` must be `postgres` (the Docker service name), not `localhost`, because the backend reaches the database over the internal Docker network.
 
 ### 3. Build and start all services
-
-From the project root:
 
 ```bash
 docker compose up --build
 ```
 
-This starts three containers:
-- `postgres` — PostgreSQL database (port `5432`)
-- `backend` — Express API server (port `5000`)
-- `frontend` — Next.js app (port `3000`)
+This starts:
 
-Wait for the logs to show the backend connected to the database and the frontend ready. First build may take a few minutes.
+* `postgres`: PostgreSQL (port 5432)
+* `backend`: Express API (port 5000)
+* `frontend`: Next.js app (port 3000)
+
+Wait until the logs show the backend connected to the database and the frontend ready. The first build can take a few minutes.
 
 ### 4. Seed the database (first run only)
-
-In a new terminal, run the seed script inside the backend container to create initial users and sample data:
 
 ```bash
 docker exec -it ems-backend-1 npm run seed
 ```
 
-> **Warning:** this drops and recreates all tables (`sequelize.sync({ force: true })`) — only run this on a fresh database. Running it again later will wipe any existing data.
+**Warning:** this drops and recreates all tables (`sequelize.sync({ force: true })`). Only run it on a fresh database.
 
-This creates three accounts, one for each role, useful for testing RBAC:
+It creates one account per role for testing RBAC:
 
-| Role         | Email              | Password    |
-|--------------|--------------------|-------------|
-| Super Admin  | `admin@ems.com`    | `Admin@123` |
-| HR Manager   | `hr@ems.com`       | `Hr@12345`  |
-| Employee     | `employee@ems.com` | `Emp@12345` |
+| Role | Email | Password |
+|---|---|---|
+| Super Admin | admin@ems.com | Admin@123 |
+| HR Manager | hr@ems.com | Hr@12345 |
+| Employee | employee@ems.com | Emp@12345 |
 
-> These are default seed credentials for local/dev use only. Change them (or seed different data) before any real/production use.
+These are local development credentials only. Change them before any real use.
 
-### 5. Access the app
+### 5. Open the app
 
-- Frontend: [http://localhost:3000/login](http://localhost:3000/login)
-- Backend API: [http://localhost:5000/api](http://localhost:5000/api)
-
-Log in with any of the accounts above.
+* Frontend: http://localhost:3000/login
+* Backend API: http://localhost:5000/api
 
 ## Running in the Background
 
-To run the app without keeping the terminal open:
-
 ```bash
-docker compose up -d
-```
-
-To stop everything:
-
-```bash
-docker compose down
-```
-
-To view logs while running detached:
-
-```bash
-docker compose logs -f
+docker compose up -d        # start detached
+docker compose logs -f      # follow logs
+docker compose down         # stop everything
 ```
 
 ## Running Tests
-
-Backend tests (auth, RBAC, organizational hierarchy) run inside the backend container:
 
 ```bash
 docker exec -it ems-backend-1 npm test
 ```
 
+The same suites run in GitHub Actions on every push, against Postgres and Redis service containers, with `npm ci` for reproducible installs.
+
 ## Troubleshooting
 
-**Port already in use (3000, 5000, or 5432):**
-Something else on your machine is using that port. Find and stop it:
+**Port already in use (3000, 5000 or 5432):** find and stop whatever is using it.
 
 ```bash
 # Windows
@@ -177,15 +173,9 @@ lsof -i :5000
 kill -9 <PID>
 ```
 
-**Backend can't connect to the database:**
-Ensure `DB_HOST=postgres` in `backend/.env` (not `localhost`) — the backend needs the Docker service name to resolve the database over the internal network.
+**Backend can't connect to the database:** make sure `DB_HOST=postgres` in `backend/.env`, not `localhost`.
 
-**Changes to code not reflecting:**
-Rebuild the affected container:
-
-```bash
-docker compose up --build
-```
+**Code changes not showing up:** rebuild with `docker compose up --build`.
 
 **Full reset (clears all data):**
 
@@ -194,92 +184,68 @@ docker compose down -v
 docker compose up --build
 ```
 
-The `-v` flag also removes the database volume, giving you a completely fresh start.
-
 ## API Documentation
 
-All endpoints (except login) require a valid JWT in the `Authorization: Bearer <token>` header.
+All endpoints except login need a valid JWT in the `Authorization: Bearer <token>` header.
 
 ### Auth
 
-| Method | Endpoint              | Access | Description                     |
-|--------|------------------------|--------|----------------------------------|
-| POST   | `/api/auth/login`      | Public | Authenticate, returns JWT + user info |
-| POST   | `/api/auth/logout`     | Auth   | Invalidate current session      |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | /api/auth/login | Public | Authenticate, returns JWT and user info |
+| POST | /api/auth/logout | Auth | Invalidate current session |
 
 ### Employees
 
-| Method | Endpoint                        | Access                          | Description                                  |
-|--------|----------------------------------|----------------------------------|-----------------------------------------------|
-| GET    | `/api/employees`                | Super Admin, HR                 | List employees — supports search, filter, sort, pagination |
-| GET    | `/api/employees/:id`            | Super Admin, HR, Employee (self)| Get a single employee's details              |
-| POST   | `/api/employees`                | Super Admin, HR                 | Create a new employee                        |
-| PUT    | `/api/employees/:id`            | Super Admin, HR, Employee (self, limited fields) | Update an employee                |
-| DELETE | `/api/employees/:id`            | Super Admin only                | Delete/deactivate an employee                |
-| GET    | `/api/employees/dashboard`      | Super Admin, HR                 | Aggregated stats: total/active/inactive employees, department counts |
-| GET    | `/api/employees/:id/reportees`  | Super Admin, HR                 | List an employee's direct reports            |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | /api/employees | Super Admin, HR | List employees with search, filter, sort, pagination |
+| GET | /api/employees/:id | Super Admin, HR, Employee (self) | Get one employee |
+| POST | /api/employees | Super Admin, HR | Create an employee |
+| PUT | /api/employees/:id | Super Admin, HR, Employee (self, limited fields) | Update an employee |
+| DELETE | /api/employees/:id | Super Admin only | Delete or deactivate an employee |
+| GET | /api/employees/dashboard | Super Admin, HR | Totals, active/inactive, department counts |
+| GET | /api/employees/:id/reportees | Super Admin, HR | Direct reports of an employee |
 
-**Query parameters for `GET /api/employees`:**
-`search` (name/email), `department`, `role`, `status`, `sortBy` (`name` \| `joiningDate`), `order` (`ASC` \| `DESC`), `page`, `limit`
+Query parameters for `GET /api/employees`: `search` (name/email), `department`, `role`, `status`, `sortBy` (`name` or `joiningDate`), `order` (`ASC` or `DESC`), `page`, `limit`.
 
 ### Organization
 
-| Method | Endpoint                        | Access             | Description                                   |
-|--------|-----------------------------------|---------------------|------------------------------------------------|
-| GET    | `/api/organization/tree`         | Super Admin, HR    | Full organizational reporting tree             |
-| PATCH  | `/api/employees/:id/manager`     | Super Admin        | Reassign an employee's reporting manager (cycle-checked) |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | /api/organization/tree | Super Admin, HR | Full reporting tree |
+| PATCH | /api/employees/:id/manager | Super Admin | Reassign a manager (cycle checked) |
 
-> Full route definitions and validation rules are in `backend/src/routes/` and `backend/src/validators/`.
+Full route definitions and validation rules live in `backend/src/routes/` and `backend/src/validators/`.
 
 ## Role Permissions
 
-| Action                          | Super Admin | HR Manager | Employee            |
-|----------------------------------|:-----------:|:----------:|:--------------------:|
-| View all employees               | ✅          | ✅         | ❌ (self only)        |
-| Create employee                  | ✅          | ✅         | ❌                     |
-| Edit any employee                | ✅          | ✅         | ❌                     |
-| Edit own profile (limited fields)| ✅          | ✅         | ✅                     |
-| Delete employee                  | ✅          | ❌         | ❌                     |
-| Assign roles / managers          | ✅          | ❌         | ❌                     |
-| View organizational tree         | ✅          | ✅         | ❌ (own chain only)    |
-
-## Features Implemented
-
-- [x] JWT authentication with protected routes
-- [x] RBAC (Super Admin / HR Manager / Employee), enforced at both route and field level
-- [x] Employee CRUD with all required fields
-- [x] Self-referencing organizational hierarchy with circular-reporting prevention
-- [x] Dashboard (total / active / inactive employees, department breakdown)
-- [x] Search, filter, and sort (server-side)
-- [x] Server-side pagination
-- [x] Frontend + backend validation
-- [x] CSV bulk import
-- [x] Dark mode
-- [x] Docker containerization (this repo)
-- [x] Unit tests (auth, RBAC, organizational hierarchy — see `backend/src/tests/`)
-- [x] Live deployment (see Deployment section below)
-
-## Deployment
-
-- **Frontend:** [https://employee-management-system-silk-omega.vercel.app/login](https://employee-management-system-silk-omega.vercel.app/login)
-- **Backend API:** [https://employee-management-system-w2cm.onrender.com/api](https://employee-management-system-w2cm.onrender.com/api)
+| Action | Super Admin | HR Manager | Employee |
+|---|---|---|---|
+| View all employees | ✅ | ✅ | ❌ (self only) |
+| Create employee | ✅ | ✅ | ❌ |
+| Edit any employee | ✅ | ✅ | ❌ |
+| Edit own profile (limited fields) | ✅ | ✅ | ✅ |
+| Delete employee | ✅ | ❌ | ❌ |
+| Assign roles and managers | ✅ | ❌ | ❌ |
+| View organizational tree | ✅ | ✅ | ❌ (own chain only) |
 
 ## Kubernetes Deployment
 
-As a learning exercise beyond the Render/Vercel production deployment, the backend was also deployed to Kubernetes (tested locally via Docker Desktop's built-in cluster) to get hands-on experience with container orchestration at a level Docker Compose doesn't cover.
+As a learning exercise beyond Docker Compose, the app was also deployed to Kubernetes, tested locally on Docker Desktop's built in cluster, to get hands on with orchestration that Compose doesn't cover.
 
 ### Architecture
 
-The manifests in `k8s/` split the app into four independently scaled services:
+The manifests in `k8s/` split the app into four independently scaled workloads:
 
 | Component | Kind | Why |
 |---|---|---|
-| `api` | Deployment (2 replicas) | Stateless, load-balanced via a ClusterIP Service |
-| `worker` | Deployment (1 replica) | Runs the BullMQ salary-notification consumer as a separate process from the API, so a worker crash can't take down request handling and vice versa |
-| `postgres` | StatefulSet + PersistentVolumeClaim | Stable network identity and persistent storage across pod restarts |
-| `redis` | Deployment | Backing store for the BullMQ job queue |
+| api | Deployment (2 replicas) | Stateless, load balanced through a ClusterIP Service |
+| worker | Deployment (1 replica) | Runs the BullMQ salary notification consumer separately from the API, so a crash in one can't take down the other |
+| postgres | StatefulSet + PersistentVolumeClaim | Stable network identity and storage that survives pod restarts |
+| redis | Deployment | Backing store for the BullMQ queue |
 
-Configuration is split between a ConfigMap (non-secret values like `DB_HOST`, `REDIS_URL`) and a Secret (`DB_PASSWORD`, `JWT_SECRET`), injected into pods as environment variables. The API Deployment has readiness and liveness probes against a `/health` endpoint, which gates rolling updates so traffic only reaches pods that are actually ready.
+Non secret config (`DB_HOST`, `REDIS_URL`) lives in a ConfigMap and credentials (`DB_PASSWORD`, `JWT_SECRET`) in a Secret, both injected as environment variables. The api Deployment has readiness and liveness probes on `/health`, which gate rolling updates so traffic only reaches pods that are actually ready.
 
 ### Running it locally
 
@@ -289,13 +255,13 @@ kubectl apply -f k8s/
 kubectl get pods -n ems -w
 ```
 
-Once all pods are `Running`, port-forward the API Service:
+Once every pod is Running, port forward the API:
 
 ```bash
 kubectl port-forward -n ems svc/api 5000:80
 ```
 
-`k8s/secret.yaml` ships with placeholder values, replace `DB_PASSWORD` and `JWT_SECRET` before applying, or create the Secret imperatively instead:
+`k8s/secret.yaml` ships with placeholder values. Replace `DB_PASSWORD` and `JWT_SECRET` before applying, or create the Secret directly:
 
 ```bash
 kubectl create secret generic ems-secret -n ems \
@@ -303,18 +269,17 @@ kubectl create secret generic ems-secret -n ems \
   --from-literal=JWT_SECRET=your_jwt_secret
 ```
 
-### What I'd change for a real production K8s deployment
+### What I'd change for a real production cluster
 
-- Run Postgres as a managed external database (RDS, Neon, Cloud SQL) instead of in-cluster, in-cluster stateful data is fine for learning but adds operational risk in real production
-- Use a secrets manager (AWS Secrets Manager, Sealed Secrets, or External Secrets Operator) instead of plain K8s Secrets, which are only base64-encoded, not encrypted at rest by default
-- Add a HorizontalPodAutoscaler on the `api` Deployment
-- Terminate TLS at the Ingress and put it behind a real domain instead of local port-forwarding
-> Hosted on Vercel (frontend) and Render (backend + PostgreSQL). Note: the free Render tier spins down after inactivity, so the first request after idle time may take 30–60 seconds to respond while it wakes up.
+* Run Postgres as a managed database (RDS, Neon, Cloud SQL) instead of in cluster. In cluster state is fine for learning but adds operational risk in production.
+* Use a secrets manager (AWS Secrets Manager, Sealed Secrets or External Secrets Operator). Plain Kubernetes Secrets are only base64 encoded and not encrypted at rest by default.
+* Add a HorizontalPodAutoscaler on the api Deployment.
+* Terminate TLS at an Ingress behind a real domain instead of local port forwarding.
 
+## Deployment Status
 
-
-
+The app was previously hosted on Vercel (frontend) and Render (backend and PostgreSQL). That deployment is now offline. To run it, use Docker Compose or the Kubernetes manifests above, or watch the walkthrough video.
 
 ## License
 
-MIT — feel free to use this as a reference.
+MIT. Feel free to use this as a reference.
