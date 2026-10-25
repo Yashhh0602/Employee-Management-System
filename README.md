@@ -4,7 +4,11 @@ A full stack employee management system with field level role based access contr
 
 ## Live Demo Walkthrough
 
-<!-- KEEP YOUR EXISTING VIDEO LINE HERE (the Video.Project.1.mp4 embed). Do not change it. -->
+
+
+https://github.com/user-attachments/assets/05fe70fd-8537-4400-bd47-def4dbcb608f
+
+
 
 > The hosted deployment is offline. The walkthrough above shows every feature running end to end.
 
